@@ -28,6 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/kasir/barang', [BarangController::class, 'index'])->name('kasir.crud');
     Route::post('/kasir/barang', [BarangController::class, 'store'])->name('kasir.barang.store');
+    Route::put('/kasir/barang/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
+Route::delete('/kasir/barang/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
 
     Route::get('/kasir/transaksi', function () {
         return view('kasir.transaksi');

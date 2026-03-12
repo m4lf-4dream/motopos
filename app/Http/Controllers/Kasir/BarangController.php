@@ -48,6 +48,39 @@ class BarangController extends Controller
             'foto'        => $nama_file,
         ]);
 
+
+
         return redirect()->route('kasir.crud')->with('success', 'Barang berhasil ditambahkan!');
     }
+
+    public function destroy($id)
+    {
+        $barang = Barang::findOrFail($id);
+
+        if ($barang->foto) {
+            unlink(public_path('storage/barangs/' . $barang->foto));
+        }
+
+        $barang->delete();
+        return redirect()->back()->with('success', 'Barang berhasil dihapus!');
+    }
+
+    public function update(Request $request, $id)
+{
+    $barang = Barang::findOrFail($id);
+
+    $request->validate([
+        'nama_barang' => 'required',
+        'harga'       => 'required|numeric',
+        'stok'        => 'required|numeric',
+    ]);
+
+    $barang->update([
+        'nama_barang' => $request->nama_barang,
+        'harga'       => $request->harga,
+        'stok'        => $request->stok,
+    ]);
+
+    return redirect()->back()->with('success', 'Data berhasil diperbarui!');
+}
 }

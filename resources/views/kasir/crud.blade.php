@@ -91,7 +91,8 @@
                                             <td>
                                                 <div class="fw-bold text-dark">{{ $item->nama_barang }}</div>
                                                 <small class="text-muted">{{ $item->kode_barang }} | {{ $item->merk }}
-                                                    ({{ $item->warna }})</small>
+                                                    ({{ $item->warna }})
+                                                </small>
                                             </td>
                                             <td class="text-center">
                                                 <span
@@ -104,8 +105,14 @@
                                                     style="border-radius: 8px; overflow: hidden;">
                                                     <button
                                                         class="btn btn-sm btn-outline-warning border-0">Edit</button>
-                                                    <button
-                                                        class="btn btn-sm btn-outline-danger border-0">Hapus</button>
+                                                    <form action="{{ route('kasir.barang.destroy', $item->id) }}"
+                                                        method="POST"
+                                                        onsubmit="return confirm('Yakin ingin menghapus barang ini?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit"
+                                                            class="btn btn-sm btn-outline-danger border-0">Hapus</button>
+                                                    </form>
                                                 </div>
                                             </td>
                                         </tr>
