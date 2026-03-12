@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Kasir\BarangController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,16 +26,12 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
+    Route::get('/kasir/barang', [BarangController::class, 'index'])->name('kasir.crud');
+    Route::post('/kasir/barang', [BarangController::class, 'store'])->name('kasir.barang.store');
 
     Route::get('/kasir/transaksi', function () {
-        return view('kasir.transaksi'); 
+        return view('kasir.transaksi');
     })->name('kasir.transaksi');
-
-
-    Route::get('/kasir/barang', function () {
-        return view('kasir.crud');
-    })->name('kasir.crud');
-
 
     Route::get('/kasir/riwayat', function () {
         return view('kasir.riwayat');
