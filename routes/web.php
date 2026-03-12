@@ -12,7 +12,7 @@ Route::get('/dashboard', function () {
   $role = Auth::user()->role;
   if ($role == 'kasir'){
     return view('dashboard.kasir');
-  } 
+  }
 
 return view('dashboard.pembeli');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -23,6 +23,23 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
 
+
+    Route::get('/kasir/transaksi', function () {
+        return view('kasir.transaksi'); 
+    })->name('kasir.transaksi');
+
+
+    Route::get('/kasir/barang', function () {
+        return view('kasir.crud');
+    })->name('kasir.crud');
+
+
+    Route::get('/kasir/riwayat', function () {
+        return view('kasir.riwayat');
+    })->name('kasir.riwayat');
+
+});
 
 require __DIR__.'/auth.php';
