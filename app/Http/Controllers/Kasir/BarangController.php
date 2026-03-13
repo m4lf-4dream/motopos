@@ -57,9 +57,9 @@ class BarangController extends Controller
     {
         $barang = Barang::findOrFail($id);
 
-        if ($barang->foto) {
-            unlink(public_path('storage/barangs/' . $barang->foto));
-        }
+        if ($barang->foto && file_exists(public_path('storage/barangs/' . $barang->foto))) {
+        unlink(public_path('storage/barangs/' . $barang->foto));
+    }
 
         $barang->delete();
         return redirect()->back()->with('success', 'Barang berhasil dihapus!');
@@ -73,7 +73,19 @@ class BarangController extends Controller
         'nama_barang' => 'required',
         'harga'       => 'required|numeric',
         'stok'        => 'required|numeric',
+        'foto'        => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
     ]);
+
+    if ($request->hasFile('foto')) {
+        if ($barang->foto && file_exists(public_path('storage/barangs/' . $barang->foto))) {
+            unlink(public_path('storage/barangs/' . $barang->foto));
+        }
+
+        $file = $request->file('foto');
+        $nama_file = time() . '_' . $file->getClientOriginalName();
+        $file->move(public_path('storage/barangs'), $nama_file);
+        $barang->foto = $nama_file;
+    }
 
     $barang->update([
         'nama_barang' => $request->nama_barang,
@@ -84,3 +96,4 @@ class BarangController extends Controller
     return redirect()->back()->with('success', 'Data berhasil diperbarui!');
 }
 }
+

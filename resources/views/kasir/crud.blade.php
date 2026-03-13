@@ -91,8 +91,7 @@
                                             <td>
                                                 <div class="fw-bold text-dark">{{ $item->nama_barang }}</div>
                                                 <small class="text-muted">{{ $item->kode_barang }} | {{ $item->merk }}
-                                                    ({{ $item->warna }})
-                                                </small>
+                                                    ({{ $item->warna }})</small>
                                             </td>
                                             <td class="text-center">
                                                 <span
@@ -101,25 +100,84 @@
                                             <td class="fw-bold text-dark">
                                                 Rp{{ number_format($item->harga, 0, ',', '.') }}</td>
                                             <td class="text-center px-4">
-                                                <div class="btn-group shadow-sm"
-                                                    style="border-radius: 8px; overflow: hidden;">
-                                                    <button
-                                                        class="btn btn-sm btn-outline-warning border-0">Edit</button>
+                                                <div class="d-flex justify-content-center gap-2">
+                                                    <button type="button" class="btn btn-sm btn-warning text-white"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#editModal{{ $item->id }}">
+                                                        Edit
+                                                    </button>
+
                                                     <form action="{{ route('kasir.barang.destroy', $item->id) }}"
-                                                        method="POST"
-                                                        onsubmit="return confirm('Yakin ingin menghapus barang ini?')">
+                                                        method="POST" onsubmit="return confirm('Hapus barang ini?')">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit"
-                                                            class="btn btn-sm btn-outline-danger border-0">Hapus</button>
+                                                            class="btn btn-sm btn-danger">Hapus</button>
                                                     </form>
                                                 </div>
                                             </td>
                                         </tr>
+
+                                        <div class="modal fade" id="editModal{{ $item->id }}" tabindex="-1"
+                                            aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content border-0" style="border-radius: 20px;">
+                                                    <div class="modal-header text-white border-0"
+                                                        style="background-color: #BF4646; border-radius: 20px 20px 0 0;">
+                                                        <h5 class="modal-title fw-bold">Edit Barang:
+                                                            {{ $item->nama_barang }}</h5>
+                                                        <button type="button" class="btn-close btn-close-white"
+                                                            data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form action="{{ route('kasir.barang.update', $item->id) }}"
+                                                        method="POST" enctype="multipart/form-data">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <div class="modal-body" style="background-color: #EDDCC6;">
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold">Nama Barang</label>
+                                                                <input type="text" name="nama_barang"
+                                                                    class="form-control"
+                                                                    value="{{ $item->nama_barang }}" required>
+                                                            </div>
+                                                            <div class="row">
+                                                                <div class="col-md-6 mb-3">
+                                                                    <label class="form-label fw-bold">Harga</label>
+                                                                    <input type="number" name="harga"
+                                                                        class="form-control"
+                                                                        value="{{ $item->harga }}" required>
+                                                                </div>
+                                                                <div class="col-md-6 mb-3">
+                                                                    <label class="form-label fw-bold">Stok</label>
+                                                                    <input type="number" name="stok"
+                                                                        class="form-control"
+                                                                        value="{{ $item->stok }}" required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold">Ganti Foto
+                                                                    (Opsional)</label>
+                                                                <input type="file" name="foto"
+                                                                    class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-0"
+                                                            style="background-color: #EDDCC6; border-radius: 0 0 20px 20px;">
+                                                            <button type="button" class="btn btn-secondary"
+                                                                data-bs-dismiss="modal">Batal</button>
+                                                            <button type="submit" class="btn text-white px-4"
+                                                                style="background-color: #BF4646;">Simpan
+                                                                Perubahan</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center py-5 text-secondary italic">Belum ada
-                                                data barang.</td>
+                                            <td colspan="5" class="text-center py-5 text-secondary italic">Belum
+                                                ada data barang.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
