@@ -42,4 +42,14 @@ Route::delete('/kasir/barang/{id}', [BarangController::class, 'destroy'])->name(
 
 });
 
+Route::get('/dashboard', function () {
+    $role = Auth::user()->role;
+    $barangs = \App\Models\Barang::where('stok', '>', 0)->get();
+    if ($role == 'kasir'){
+        return view('dashboard.kasir');
+    }
+
+    return view('dashboard.pembeli', compact('barangs'));
+})->middleware(['auth', 'verified'])->name('dashboard');
+
 require __DIR__.'/auth.php';
