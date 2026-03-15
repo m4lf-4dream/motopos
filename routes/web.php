@@ -5,13 +5,13 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Kasir\BarangController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Barang; // Import Model Barang
+use App\Models\Barang;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// ROUTE DASHBOARD (Hanya satu definisi saja)
+// ROUTE DASHBOARD
 Route::get('/dashboard', function () {
     $role = Auth::user()->role;
     $barangs = Barang::where('stok', '>', 0)->get();
@@ -29,25 +29,23 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Fitur Keranjang
-    Route::post('/cart/add', [CartController::class, 'addToCart'])->name('cart.add');
-    Route::get('/cart', [CartController::class, 'showCart'])->name('cart.index');
+    // Fitur Keranjang Terpadu
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'showCart'])->name('cart.index');
+        Route::post('/add', [CartController::class, 'addToCart'])->name('cart.add');
+        Route::delete('/remove', [CartController::class, 'remove'])->name('cart.remove');
+    });
 });
 
-// ROUTE KASIR (CRUD Barang & Transaksi)
+// ROUTE KASIR
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/kasir/barang', [BarangController::class, 'index'])->name('kasir.crud');
     Route::post('/kasir/barang', [BarangController::class, 'store'])->name('kasir.barang.store');
     Route::put('/kasir/barang/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
     Route::delete('/kasir/barang/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
 
-    Route::get('/kasir/transaksi', function () {
-        return view('kasir.transaksi');
-    })->name('kasir.transaksi');
-
-    Route::get('/kasir/riwayat', function () {
-        return view('kasir.riwayat');
-    })->name('kasir.riwayat');
+    Route::get('/kasir/transaksi', function () { return view('kasir.transaksi'); })->name('kasir.transaksi');
+    Route::get('/kasir/riwayat', function () { return view('kasir.riwayat'); })->name('kasir.riwayat');
 });
 
 require __DIR__.'/auth.php';
