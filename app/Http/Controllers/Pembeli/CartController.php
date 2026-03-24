@@ -109,4 +109,21 @@ class CartController extends Controller
             return redirect()->back()->with('success', 'Barang dihapus, stok kembali, dan data database dibersihkan!');
         }
     }
+    public function callback(Request $request)
+{
+    $serverKey = env('MIDTRANS_SERVER_KEY');
+    $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+
+    if ($hashed == $request->signature_key) {
+        if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
+         
+            $transaksi = \App\Models\Transaksi::where('order_id', $request->order_id)->first();
+            if ($transaksi) {
+                $transaksi->update(['status' => 'Success']);
+            }
+        }
+    }
+
+    return response()->json(['status' => 'ok']);
+}
 }
