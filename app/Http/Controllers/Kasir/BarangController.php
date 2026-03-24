@@ -95,5 +95,23 @@ class BarangController extends Controller
 
     return redirect()->back()->with('success', 'Data berhasil diperbarui!');
 }
+public function callback(Request $request)
+{
+    $serverKey = env('MIDTRANS_SERVER_KEY');
+    $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+
+    // 1. Validasi apakah data benar-benar dari Midtrans
+    if ($hashed == $request->signature_key) {
+
+        // 2. Jika pembayaran sukses (Settlement)
+        if ($request->transaction_status == 'settlement' || $request->transaction_status == 'capture') {
+
+
+            return response()->json(['message' => 'Pembayaran berhasil, stok diupdate'], 200);
+        }
+    }
+
+    return response()->json(['message' => 'Signature invalid'], 403);
+}
 }
 

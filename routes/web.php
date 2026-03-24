@@ -48,4 +48,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/kasir/riwayat', function () { return view('kasir.riwayat'); })->name('kasir.riwayat');
 });
 
+Route::post('/midtrans-callback', [CartController::class, 'callback']);
+
 require __DIR__.'/auth.php';

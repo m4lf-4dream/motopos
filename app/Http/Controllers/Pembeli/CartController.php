@@ -26,26 +26,26 @@ class CartController extends Controller
         $qty = $request->quantity;
         $total_harga = $barang->harga * $qty;
 
-        // Validasi stok
+        // 1. Validasi apakah stok mencukupi
         if ($qty > $barang->stok) {
             return redirect()->back()->with('error', 'Stok tidak mencukupi!');
         }
 
         $cart = session()->get('cart', []);
 
-        // Data dasar barang untuk session
+        // 2. Siapkan data untuk session keranjang
         $cartData = [
             "name" => $barang->nama_barang,
             "quantity" => $qty,
             "price" => $barang->harga,
             "photo" => $barang->foto,
             "merk" => $barang->merk,
-            "metode" => $request->metode ?? 'Ambil Sendiri', // Tambahkan default
-            "payment" => $request->payment ?? 'Cash',       // Tambahkan default
+            "metode" => $request->metode ?? 'Ambil Sendiri',
+            "payment" => $request->payment ?? 'Cash',
             "snap_token" => null
         ];
 
-        // LOGIKA MIDTRANS JIKA PILIH E-MONEY
+        // 3. Logika Midtrans jika pilih E-Money
         if ($request->payment == 'E-Money') {
             $params = [
                 'transaction_details' => [
@@ -53,7 +53,6 @@ class CartController extends Controller
                     'gross_amount' => (int)$total_harga,
                 ],
                 'customer_details' => [
-                    // Cek jika user login, gunakan nama. Jika tidak, pakai Guest.
                     'first_name' => Auth::check() ? (Auth::user()->name ?? Auth::user()->nama) : 'Guest',
                     'email' => Auth::check() ? Auth::user()->email : 'guest@motopart.com',
                 ],
@@ -67,10 +66,15 @@ class CartController extends Controller
             }
         }
 
+        // 4. Simpan ke Session
         $cart[$barang->id] = $cartData;
         session()->put('cart', $cart);
 
-        return redirect()->route('cart.index')->with('success', 'Barang berhasil masuk keranjang!');
+        // 5. UPDATE STOK DI DATABASE (PENTING)
+        // Ini akan mencari id barang dan mengurangi angka di kolom 'stok'
+        $barang->decrement('stok', $qty);
+
+        return redirect()->route('cart.index')->with('success', 'Barang berhasil masuk keranjang dan stok berkurang!');
     }
 
     public function showCart()
@@ -83,10 +87,16 @@ class CartController extends Controller
         if ($request->id) {
             $cart = session()->get('cart');
             if (isset($cart[$request->id])) {
+                // Opsional: Jika barang dihapus dari keranjang, stok dikembalikan
+                $barang = Barang::find($request->id);
+                if($barang) {
+                    $barang->increment('stok', $cart[$request->id]['quantity']);
+                }
+
                 unset($cart[$request->id]);
                 session()->put('cart', $cart);
             }
-            return redirect()->back()->with('success', 'Barang dihapus!');
+            return redirect()->back()->with('success', 'Barang dihapus dan stok dikembalikan!');
         }
     }
-}
+}   
