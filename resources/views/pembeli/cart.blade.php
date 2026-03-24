@@ -90,10 +90,13 @@
                                     BAYAR SEKARANG (MIDTRANS)
                                 </button>
                             @else
-                                <button class="btn btn-light w-100 fw-bold py-2"
-                                    style="color: #BF4646; border-radius: 10px;">
-                                    KONFIRMASI PESANAN (CASH)
-                                </button>
+                                <form action="{{ route('cart.checkout.cash') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="btn btn-light w-100 fw-bold py-2"
+                                        style="color: #BF4646; border-radius: 10px;">
+                                        KONFIRMASI PESANAN
+                                    </button>
+                                </form>
                             @endif
                         @endif
                     </div>

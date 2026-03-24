@@ -12,25 +12,25 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// ROUTE DASHBOARD
+//DASHBOARD
 Route::get('/dashboard', function () {
     $role = Auth::user()->role;
     $barangs = Barang::where('stok', '>', 0)->get();
 
-    if ($role == 'kasir'){
+    if ($role == 'kasir') {
         return view('dashboard.kasir');
     }
 
     return view('dashboard.pembeli', compact('barangs'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// ROUTE PEMBELI (Profile & Keranjang)
+//ROUTE KHUSUS PEMBELI
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Fitur Keranjang Terpadu
+    //Fitur Keranjang
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'showCart'])->name('cart.index');
         Route::post('/add', [CartController::class, 'addToCart'])->name('cart.add');
@@ -38,23 +38,31 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// ROUTE KASIR
+//KASIR
 Route::middleware(['auth', 'verified'])->group(function () {
-    // CRUD Barang
-    Route::get('/kasir/barang', [BarangController::class, 'index'])->name('kasir.crud');
-    Route::post('/kasir/barang', [BarangController::class, 'store'])->name('kasir.barang.store');
-    Route::put('/kasir/barang/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
-    Route::delete('/kasir/barang/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
 
-    // Transaksi & Riwayat (DIUBAH KE CONTROLLER)
-    Route::get('/kasir/transaksi', [TransaksiController::class, 'index'])->name('kasir.transaksi'); // Bisa pakai index yang sama atau beda
+    //CRUD
+    Route::prefix('kasir/barang')->group(function () {
+        Route::get('/', [BarangController::class, 'index'])->name('kasir.crud');
+        Route::post('/', [BarangController::class, 'store'])->name('kasir.barang.store');
+        Route::put('/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
+        Route::delete('/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
+    });
+
+    //Kasir
+    Route::get('/kasir/transaksi', [TransaksiController::class, 'create'])->name('kasir.transaksi');
+
+    //Riwayuy
     Route::get('/kasir/riwayat', [TransaksiController::class, 'index'])->name('kasir.riwayat');
 
-    // Route untuk Tombol Konfirmasi Cash
-    Route::post('/kasir/transaksi/konfirmasi/{id}', [TransaksiController::class, 'konfirmasi'])->name('kasir.konfirmasi');
+    //Confirm Pay
+    Route::post('/kasir/konfirmasi/{id}', [TransaksiController::class, 'konfirmasi'])->name('kasir.konfirmasi');
+
+    //cartbaruuw
+    Route::post('/cart/checkout-cash', [CartController::class, 'checkoutCash'])->name('cart.checkout.cash');
 });
 
-// Callback Midtrans (Harus POST dan di luar middleware auth)
+//MIDTRANS
 Route::post('/midtrans-callback', [CartController::class, 'callback'])->name('midtrans.callback');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

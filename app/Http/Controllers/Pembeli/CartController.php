@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Pembeli;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
-use App\Models\Transaksi; // TAMBAHKAN INI
+use App\Models\Transaksi;
 use Illuminate\Http\Request;
 use Midtrans\Config;
 use Midtrans\Snap;
@@ -26,34 +26,32 @@ class CartController extends Controller
         $qty = $request->quantity;
         $total_harga = $barang->harga * $qty;
 
-        // Buat ID pesanan di awal agar sama antara Database dan Midtrans
         $orderId = 'MOTOPART-' . uniqid();
 
         if ($qty > $barang->stok) {
             return redirect()->back()->with('error', 'Stok tidak mencukupi!');
         }
 
-        // --- BAGIAN 1: SIMPAN KE DATABASE ---
-        $transaksi = Transaksi::create([
+        Transaksi::create([
             'order_id' => $orderId,
             'barang_id' => $barang->id,
             'jumlah' => $qty,
             'total_harga' => $total_harga,
             'metode_pembayaran' => $request->payment,
-            'status' => 'Pending', // Default selalu pending
+            'status' => 'Pending',
         ]);
 
-        // --- BAGIAN 2: LOGIKA MIDTRANS ---
+        //Midtrans
         $snapToken = null;
         if ($request->payment == 'E-Money') {
             $params = [
                 'transaction_details' => [
-                    'order_id' => $orderId, // Pakai ID yang sama dengan database
+                    'order_id' => $orderId,
                     'gross_amount' => (int)$total_harga,
                 ],
                 'customer_details' => [
-                    'first_name' => Auth::check() ? (Auth::user()->name ?? Auth::user()->nama) : 'Guest',
-                    'email' => Auth::check() ? Auth::user()->email : 'guest@motopart.com',
+                    'first_name' => Auth::user()->name ?? 'Guest',
+                    'email' => Auth::user()->email ?? 'guest@motopart.com',
                 ],
             ];
 
@@ -64,7 +62,7 @@ class CartController extends Controller
             }
         }
 
-        // --- BAGIAN 3: SESSION & STOK ---
+        //Session
         $cart = session()->get('cart', []);
         $cart[$barang->id] = [
             "name" => $barang->nama_barang,
@@ -75,20 +73,31 @@ class CartController extends Controller
             "metode" => $request->metode ?? 'Ambil Sendiri',
             "payment" => $request->payment,
             "snap_token" => $snapToken,
-            "order_id" => $orderId // Simpan order_id di session juga
+            "order_id" => $orderId
         ];
 
         session()->put('cart', $cart);
-
-        // Jika Cash, stok langsung berkurang (karena sudah pasti diambil di toko)
-        // Jika E-Money, stok juga berkurang agar barang "terpesan"
         $barang->decrement('stok', $qty);
 
-        return redirect()->route('cart.index')->with('success', 'Pesanan dicatat! Silahkan cek keranjang.');
+        return redirect()->route('cart.index')->with('success', 'Masuk keranjang!');
     }
 
-    // Fungsi showCart dan remove tetap sama seperti sebelumnya
-    public function showCart() { return view('pembeli.cart'); }
+    public function showCart()
+    {
+        return view('pembeli.cart');
+    }
+
+    //CHECKOUT CASH
+    public function checkoutCash()
+    {
+        $cart = session()->get('cart');
+
+        if (!$cart) {
+            return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
+        }
+        session()->forget('cart');
+        return redirect()->route('kasir.riwayat')->with('success', 'Pesanan Cash berhasil dikonfirmasi. Silahkan ke kasir!');
+    }
 
     public function remove(Request $request)
     {
@@ -100,30 +109,28 @@ class CartController extends Controller
                     $barang->increment('stok', $cart[$request->id]['quantity']);
                 }
 
-                // Hapus juga data di tabel transaksis karena pesanan dibatalkan/dihapus
                 Transaksi::where('order_id', $cart[$request->id]['order_id'])->delete();
 
                 unset($cart[$request->id]);
                 session()->put('cart', $cart);
             }
-            return redirect()->back()->with('success', 'Barang dihapus, stok kembali, dan data database dibersihkan!');
+            return redirect()->back()->with('success', 'Barang dibatalkan.');
         }
     }
-    public function callback(Request $request)
-{
-    $serverKey = env('MIDTRANS_SERVER_KEY');
-    $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
 
-    if ($hashed == $request->signature_key) {
-        if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
-         
-            $transaksi = \App\Models\Transaksi::where('order_id', $request->order_id)->first();
-            if ($transaksi) {
-                $transaksi->update(['status' => 'Success']);
+    public function callback(Request $request)
+    {
+        $serverKey = env('MIDTRANS_SERVER_KEY');
+        $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+
+        if ($hashed == $request->signature_key) {
+            if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
+                $transaksi = Transaksi::where('order_id', $request->order_id)->first();
+                if ($transaksi) {
+                    $transaksi->update(['status' => 'Success']);
+                }
             }
         }
+        return response()->json(['status' => 'ok']);
     }
-
-    return response()->json(['status' => 'ok']);
-}
 }
