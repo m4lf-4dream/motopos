@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pembeli;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
+use App\Models\Transaksi; // TAMBAHKAN INI
 use Illuminate\Http\Request;
 use Midtrans\Config;
 use Midtrans\Snap;
@@ -13,7 +14,6 @@ class CartController extends Controller
 {
     public function __construct()
     {
-        // Konfigurasi Midtrans dari .env
         Config::$serverKey = env('MIDTRANS_SERVER_KEY');
         Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false);
         Config::$isSanitized = env('MIDTRANS_IS_SANITIZED', true);
@@ -26,30 +26,29 @@ class CartController extends Controller
         $qty = $request->quantity;
         $total_harga = $barang->harga * $qty;
 
-        // 1. Validasi apakah stok mencukupi
+        // Buat ID pesanan di awal agar sama antara Database dan Midtrans
+        $orderId = 'MOTOPART-' . uniqid();
+
         if ($qty > $barang->stok) {
             return redirect()->back()->with('error', 'Stok tidak mencukupi!');
         }
 
-        $cart = session()->get('cart', []);
+        // --- BAGIAN 1: SIMPAN KE DATABASE ---
+        $transaksi = Transaksi::create([
+            'order_id' => $orderId,
+            'barang_id' => $barang->id,
+            'jumlah' => $qty,
+            'total_harga' => $total_harga,
+            'metode_pembayaran' => $request->payment,
+            'status' => 'Pending', // Default selalu pending
+        ]);
 
-        // 2. Siapkan data untuk session keranjang
-        $cartData = [
-            "name" => $barang->nama_barang,
-            "quantity" => $qty,
-            "price" => $barang->harga,
-            "photo" => $barang->foto,
-            "merk" => $barang->merk,
-            "metode" => $request->metode ?? 'Ambil Sendiri',
-            "payment" => $request->payment ?? 'Cash',
-            "snap_token" => null
-        ];
-
-        // 3. Logika Midtrans jika pilih E-Money
+        // --- BAGIAN 2: LOGIKA MIDTRANS ---
+        $snapToken = null;
         if ($request->payment == 'E-Money') {
             $params = [
                 'transaction_details' => [
-                    'order_id' => 'MOTOPART-' . uniqid(),
+                    'order_id' => $orderId, // Pakai ID yang sama dengan database
                     'gross_amount' => (int)$total_harga,
                 ],
                 'customer_details' => [
@@ -60,43 +59,54 @@ class CartController extends Controller
 
             try {
                 $snapToken = Snap::getSnapToken($params);
-                $cartData['snap_token'] = $snapToken;
             } catch (\Exception $e) {
-                return redirect()->back()->with('error', 'Koneksi Midtrans Gagal: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Midtrans Gagal: ' . $e->getMessage());
             }
         }
 
-        // 4. Simpan ke Session
-        $cart[$barang->id] = $cartData;
+        // --- BAGIAN 3: SESSION & STOK ---
+        $cart = session()->get('cart', []);
+        $cart[$barang->id] = [
+            "name" => $barang->nama_barang,
+            "quantity" => $qty,
+            "price" => $barang->harga,
+            "photo" => $barang->foto,
+            "merk" => $barang->merk,
+            "metode" => $request->metode ?? 'Ambil Sendiri',
+            "payment" => $request->payment,
+            "snap_token" => $snapToken,
+            "order_id" => $orderId // Simpan order_id di session juga
+        ];
+
         session()->put('cart', $cart);
 
-        // 5. UPDATE STOK DI DATABASE (PENTING)
-        // Ini akan mencari id barang dan mengurangi angka di kolom 'stok'
+        // Jika Cash, stok langsung berkurang (karena sudah pasti diambil di toko)
+        // Jika E-Money, stok juga berkurang agar barang "terpesan"
         $barang->decrement('stok', $qty);
 
-        return redirect()->route('cart.index')->with('success', 'Barang berhasil masuk keranjang dan stok berkurang!');
+        return redirect()->route('cart.index')->with('success', 'Pesanan dicatat! Silahkan cek keranjang.');
     }
 
-    public function showCart()
-    {
-        return view('pembeli.cart');
-    }
+    // Fungsi showCart dan remove tetap sama seperti sebelumnya
+    public function showCart() { return view('pembeli.cart'); }
 
     public function remove(Request $request)
     {
         if ($request->id) {
             $cart = session()->get('cart');
             if (isset($cart[$request->id])) {
-                // Opsional: Jika barang dihapus dari keranjang, stok dikembalikan
                 $barang = Barang::find($request->id);
                 if($barang) {
                     $barang->increment('stok', $cart[$request->id]['quantity']);
                 }
 
+                // Hapus juga data di tabel transaksis karena pesanan dibatalkan/dihapus
+                Transaksi::where('order_id', $cart[$request->id]['order_id'])->delete();
+
                 unset($cart[$request->id]);
                 session()->put('cart', $cart);
             }
-            return redirect()->back()->with('success', 'Barang dihapus dan stok dikembalikan!');
+            return redirect()->back()->with('success', 'Barang dihapus, stok kembali, dan data database dibersihkan!');
         }
     }
-}   
+}
