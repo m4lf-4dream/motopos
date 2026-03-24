@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Kasir\TransaksiController;
 use App\Http\Controllers\Pembeli\CartController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Kasir\BarangController;
@@ -39,15 +40,21 @@ Route::middleware('auth')->group(function () {
 
 // ROUTE KASIR
 Route::middleware(['auth', 'verified'])->group(function () {
+    // CRUD Barang
     Route::get('/kasir/barang', [BarangController::class, 'index'])->name('kasir.crud');
     Route::post('/kasir/barang', [BarangController::class, 'store'])->name('kasir.barang.store');
     Route::put('/kasir/barang/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
     Route::delete('/kasir/barang/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
 
-    Route::get('/kasir/transaksi', function () { return view('kasir.transaksi'); })->name('kasir.transaksi');
-    Route::get('/kasir/riwayat', function () { return view('kasir.riwayat'); })->name('kasir.riwayat');
+    // Transaksi & Riwayat (DIUBAH KE CONTROLLER)
+    Route::get('/kasir/transaksi', [TransaksiController::class, 'index'])->name('kasir.transaksi'); // Bisa pakai index yang sama atau beda
+    Route::get('/kasir/riwayat', [TransaksiController::class, 'index'])->name('kasir.riwayat');
+
+    // Route untuk Tombol Konfirmasi Cash
+    Route::post('/kasir/transaksi/konfirmasi/{id}', [TransaksiController::class, 'konfirmasi'])->name('kasir.konfirmasi');
 });
 
-Route::post('/midtrans-callback', [CartController::class, 'callback']);
+// Callback Midtrans (Harus POST dan di luar middleware auth)
+Route::post('/midtrans-callback', [CartController::class, 'callback'])->name('midtrans.callback');
 
 require __DIR__.'/auth.php';
