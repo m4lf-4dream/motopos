@@ -95,8 +95,14 @@ class CartController extends Controller
         if (!$cart) {
             return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
         }
+
+        $userRole = Auth::user()->role;
         session()->forget('cart');
-        return redirect()->route('kasir.riwayat')->with('success', 'Pesanan Cash berhasil dikonfirmasi. Silahkan ke kasir!');
+
+        if ($userRole === 'kasir') {
+            return redirect()->route('kasir.riwayat')->with('success', 'Transaksi berhasil dicatat!');
+        }
+        return redirect()->route('dashboard')->with('success', 'Pesanan dikirim! Silahkan bayar di Kasir.');
     }
 
     public function remove(Request $request)
@@ -105,7 +111,7 @@ class CartController extends Controller
             $cart = session()->get('cart');
             if (isset($cart[$request->id])) {
                 $barang = Barang::find($request->id);
-                if($barang) {
+                if ($barang) {
                     $barang->increment('stok', $cart[$request->id]['quantity']);
                 }
 
