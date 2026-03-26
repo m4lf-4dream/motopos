@@ -12,7 +12,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// --- DASHBOARD (Multi-Role) ---
+//DASHBOARD
 Route::get('/dashboard', function () {
     $role = Auth::user()->role;
     $barangs = Barang::where('stok', '>', 0)->get();
@@ -24,7 +24,7 @@ Route::get('/dashboard', function () {
     return view('dashboard.pembeli', compact('barangs'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// --- ROUTE KHUSUS PEMBELI (Profile & Keranjang) ---
+//PEMBELI
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -39,7 +39,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/checkout-cash', [CartController::class, 'checkoutCash'])->name('cart.checkout.cash');
     });
 });
-
+//kasir
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('kasir')->group(function () {
@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/barang/{id}', [BarangController::class, 'update'])->name('kasir.barang.update');
         Route::delete('/barang/{id}', [BarangController::class, 'destroy'])->name('kasir.barang.destroy');
         Route::get('/transaksi', [TransaksiController::class, 'create'])->name('kasir.transaksi');
+        Route::get('/kasir/antrean', [TransaksiController::class, 'getAntrean'])->name('kasir.antrean');
         Route::post('/transaksi/store', [TransaksiController::class, 'store'])->name('kasir.transaksi.store');
         Route::get('/riwayat', [TransaksiController::class, 'index'])->name('kasir.riwayat');
         Route::post('/transaksi/konfirmasi/{id}', [TransaksiController::class, 'konfirmasi'])->name('kasir.konfirmasi');

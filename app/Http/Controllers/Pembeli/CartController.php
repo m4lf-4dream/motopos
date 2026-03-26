@@ -88,22 +88,34 @@ class CartController extends Controller
     }
 
     //CHECKOUT CASH
-    public function checkoutCash()
-    {
-        $cart = session()->get('cart');
+public function checkoutCash()
+{
+    $cart = session()->get('cart');
 
-        if (!$cart) {
-            return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
-        }
-
-        $userRole = Auth::user()->role;
-        session()->forget('cart');
-
-        if ($userRole === 'kasir') {
-            return redirect()->route('kasir.riwayat')->with('success', 'Transaksi berhasil dicatat!');
-        }
-        return redirect()->route('dashboard')->with('success', 'Pesanan dikirim! Silahkan bayar di Kasir.');
+    if (!$cart) {
+        return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
     }
+    $newOrderId = 'MTP-' . strtoupper(uniqid());
+    foreach ($cart as $id => $details) {
+        \App\Models\Transaksi::create([
+            'order_id'          => $newOrderId,
+            'barang_id'         => $id,
+            'jumlah'            => $details['quantity'],
+            'total_harga'       => $details['price'] * $details['quantity'],
+            'metode_pembayaran' => 'Cash',
+            'status'            => 'Pending',
+        ]);
+    }
+
+    $userRole = Auth::user()->role;
+    session()->forget('cart');
+
+    if ($userRole === 'kasir') {
+        return redirect()->route('kasir.riwayat')->with('success', 'Transaksi berhasil dicatat!');
+    }
+
+    return redirect()->route('dashboard')->with('success', 'Pesanan dikirim! Silahkan bayar di Kasir.');
+}
 
     public function remove(Request $request)
     {

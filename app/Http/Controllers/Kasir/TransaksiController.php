@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+
 class TransaksiController extends Controller
 {
     public function index()
@@ -31,7 +32,7 @@ class TransaksiController extends Controller
         return view('kasir.transaksi', compact('barangs'));
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
         if (Auth::user()->role !== 'kasir') {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);
@@ -53,6 +54,7 @@ class TransaksiController extends Controller
                     throw new \Exception("Stok {$barang->nama_barang} tidak mencukupi.");
                 }
 
+                // Simpan transaksi baru sebagai 'Success'
                 Transaksi::create([
                     'order_id' => 'POS-' . strtoupper(uniqid()),
                     'barang_id' => $item['id'],
@@ -64,6 +66,9 @@ class TransaksiController extends Controller
 
                 $barang->decrement('stok', $item['quantity']);
             }
+            if ($request->has('order_id') && !empty($request->order_id)) {
+                DB::table('transaksis')->where('order_id', $request->order_id)->delete();
+            }
 
             DB::commit();
 
@@ -71,7 +76,6 @@ class TransaksiController extends Controller
                 'status' => 'success',
                 'redirect' => route('kasir.riwayat')
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -80,7 +84,6 @@ class TransaksiController extends Controller
             ], 500);
         }
     }
-
     public function konfirmasi($id)
     {
         $transaksi = Transaksi::findOrFail($id);
@@ -91,5 +94,17 @@ class TransaksiController extends Controller
         }
 
         return redirect()->back()->with('error', 'Transaksi sudah selesai.');
+    }
+
+    public function getAntrean()
+    {
+
+        $antrean = \App\Models\Transaksi::with('barang')
+            ->where('status', 'Pending')
+            ->where('metode_pembayaran', 'Cash')
+            ->get()
+            ->groupBy('order_id');
+
+        return response()->json($antrean);
     }
 }
