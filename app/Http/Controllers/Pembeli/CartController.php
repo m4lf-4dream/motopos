@@ -26,24 +26,14 @@ class CartController extends Controller
         $qty = $request->quantity;
         $total_harga = $barang->harga * $qty;
 
-        $orderId = 'MOTOPART-' . uniqid();
-
         if ($qty > $barang->stok) {
             return redirect()->back()->with('error', 'Stok tidak mencukupi!');
         }
 
-        Transaksi::create([
-            'order_id' => $orderId,
-            'barang_id' => $barang->id,
-            'jumlah' => $qty,
-            'total_harga' => $total_harga,
-            'metode_pembayaran' => $request->payment,
-            'status' => 'Pending',
-        ]);
-
-        //Midtrans
+ 
         $snapToken = null;
         if ($request->payment == 'E-Money') {
+            $orderId = 'MTP-' . strtoupper(uniqid());
             $params = [
                 'transaction_details' => [
                     'order_id' => $orderId,
@@ -72,12 +62,11 @@ class CartController extends Controller
             "merk" => $barang->merk,
             "metode" => $request->metode ?? 'Ambil Sendiri',
             "payment" => $request->payment,
-            "snap_token" => $snapToken,
-            "order_id" => $orderId
+            "snap_token" => $snapToken
         ];
 
         session()->put('cart', $cart);
-        $barang->decrement('stok', $qty);
+
 
         return redirect()->route('cart.index')->with('success', 'Masuk keranjang!');
     }
@@ -87,52 +76,47 @@ class CartController extends Controller
         return view('pembeli.cart');
     }
 
-    //CHECKOUT CASH
-public function checkoutCash()
-{
-    $cart = session()->get('cart');
+    public function checkoutCash()
+    {
+        $cart = session()->get('cart');
 
-    if (!$cart) {
-        return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
+        if (!$cart) {
+            return redirect()->route('dashboard')->with('error', 'Keranjang sudah kosong.');
+        }
+
+        $newOrderId = 'MTP-' . strtoupper(uniqid());
+
+        foreach ($cart as $id => $details) {
+            Transaksi::create([
+                'order_id'          => $newOrderId,
+                'barang_id'         => $id,
+                'jumlah'            => $details['quantity'],
+                'total_harga'       => $details['price'] * $details['quantity'],
+                'metode_pembayaran' => 'Cash',
+                'status'            => 'Pending',
+            ]);
+        }
+
+        session()->forget('cart');
+        $userRole = Auth::user()->role;
+
+        if ($userRole === 'kasir') {
+            return redirect()->route('kasir.riwayat')->with('success', 'Transaksi berhasil dicatat!');
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Pesanan dikirim! Silahkan bayar di Kasir.');
     }
-    $newOrderId = 'MTP-' . strtoupper(uniqid());
-    foreach ($cart as $id => $details) {
-        \App\Models\Transaksi::create([
-            'order_id'          => $newOrderId,
-            'barang_id'         => $id,
-            'jumlah'            => $details['quantity'],
-            'total_harga'       => $details['price'] * $details['quantity'],
-            'metode_pembayaran' => 'Cash',
-            'status'            => 'Pending',
-        ]);
-    }
-
-    $userRole = Auth::user()->role;
-    session()->forget('cart');
-
-    if ($userRole === 'kasir') {
-        return redirect()->route('kasir.riwayat')->with('success', 'Transaksi berhasil dicatat!');
-    }
-
-    return redirect()->route('dashboard')->with('success', 'Pesanan dikirim! Silahkan bayar di Kasir.');
-}
 
     public function remove(Request $request)
     {
         if ($request->id) {
             $cart = session()->get('cart');
             if (isset($cart[$request->id])) {
-                $barang = Barang::find($request->id);
-                if ($barang) {
-                    $barang->increment('stok', $cart[$request->id]['quantity']);
-                }
-
-                Transaksi::where('order_id', $cart[$request->id]['order_id'])->delete();
 
                 unset($cart[$request->id]);
                 session()->put('cart', $cart);
             }
-            return redirect()->back()->with('success', 'Barang dibatalkan.');
+            return redirect()->back()->with('success', 'Barang dihapus dari keranjang.');
         }
     }
 
@@ -146,6 +130,7 @@ public function checkoutCash()
                 $transaksi = Transaksi::where('order_id', $request->order_id)->first();
                 if ($transaksi) {
                     $transaksi->update(['status' => 'Success']);
+
                 }
             }
         }
