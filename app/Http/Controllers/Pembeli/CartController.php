@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Controllers\Pembeli;
-
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
 use App\Models\Transaksi;
@@ -30,7 +28,7 @@ class CartController extends Controller
             return redirect()->back()->with('error', 'Stok tidak mencukupi!');
         }
 
- 
+
         $snapToken = null;
         if ($request->payment == 'E-Money') {
             $orderId = 'MTP-' . strtoupper(uniqid());

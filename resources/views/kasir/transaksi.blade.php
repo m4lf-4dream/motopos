@@ -127,7 +127,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     let cart = [];
     let totalPrice = 0;
-    let currentOrderId = null; // Tambahan: Melacak ID antrean yang dipilih
+    let currentOrderId = null;
 
     const modalElement = document.getElementById('modalAntrean');
     const modalAntrean = new bootstrap.Modal(modalElement);
@@ -146,11 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 2. KERANJANG ---
+    //KERANJANG
     document.addEventListener('click', function(e) {
         const addBtn = e.target.closest('.add-to-pos');
         if (addBtn) {
-            // Jika tambah barang manual, kita anggap bukan dari antrean
             if (cart.length === 0) currentOrderId = null;
 
             const product = {
@@ -202,12 +201,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (removeBtn) {
             const index = removeBtn.dataset.index;
             cart.splice(index, 1);
-            if (cart.length === 0) currentOrderId = null; // Reset ID jika keranjang kosong
+            if (cart.length === 0) currentOrderId = null;
             renderCart();
         }
     });
 
-    // --- 3. PEMBAYARAN ---
+    //PEMBAYARAN
     const inputPay = document.getElementById('input-pay');
     const textChange = document.getElementById('text-change');
     const btnConfirm = document.getElementById('btn-confirm');
@@ -235,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- 4. ANTREAN ---
+    //ANTREAN
     const btnAntrean = document.getElementById('btn-antrean');
     if(btnAntrean) {
         btnAntrean.addEventListener('click', function() {
@@ -281,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnPilih = e.target.closest('.pilih-pesanan');
         if (btnPilih) {
             const items = JSON.parse(btnPilih.dataset.items);
-            currentOrderId = btnPilih.dataset.orderid; // Simpan Order ID yang dipilih
+            currentOrderId = btnPilih.dataset.orderid;
 
             cart = [];
             items.forEach(item => {
@@ -302,6 +301,10 @@ document.addEventListener('DOMContentLoaded', function() {
         btnConfirm.addEventListener('click', function() {
             if (!confirm('Selesaikan transaksi ini?')) return;
 
+            // Matikan tombol agar tidak dobel klik
+            btnConfirm.disabled = true;
+            btnConfirm.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Memproses...';
+
             fetch("{{ route('kasir.transaksi.store') }}", {
                 method: "POST",
                 headers: {
@@ -311,19 +314,97 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     items: JSON.stringify(cart),
                     bayar: inputPay.value,
-                    order_id: currentOrderId // Kirim ID antrean ke backend untuk dihapus
+                    order_id: currentOrderId
                 })
             })
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {
-                    window.location.href = data.redirect;
+                    cetakStruk(data.data_struk);
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
                 } else {
                     alert('Error: ' + data.message);
+                    btnConfirm.disabled = false;
+                    btnConfirm.innerHTML = '<i class="bi bi-check-all me-2"></i> SELESAIKAN TRANSAKSI';
                 }
             })
-            .catch(err => alert('Terjadi kesalahan sistem.'));
+            .catch(err => {
+                alert('Terjadi kesalahan sistem.');
+                btnConfirm.disabled = false;
+                btnConfirm.innerHTML = '<i class="bi bi-check-all me-2"></i> SELESAIKAN TRANSAKSI';
+            });
         });
+    }
+
+    //PRINT
+    function cetakStruk(data) {
+        const nota = window.open('', '_blank', 'width=300,height=600');
+        let listBarang = '';
+
+        data.items.forEach(item => {
+      
+            const nama = item.name || item.barang.nama_barang;
+            const subtotal = item.price * item.quantity;
+
+            listBarang += `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span style="flex: 1;">${nama} x${item.quantity}</span>
+                    <span>${new Intl.NumberFormat('id-ID').format(subtotal)}</span>
+                </div>`;
+        });
+
+        const isiNota = `
+            <html>
+            <head>
+                <title>Cetak Struk - MOTOPART</title>
+                <style>
+                    body { font-family: 'Courier New', Courier, monospace; width: 260px; padding: 5px; font-size: 12px; color: #000; }
+                    .text-center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .line { border-top: 1px dashed #000; margin: 5px 0; }
+                    .flex-between { display: flex; justify-content: space-between; }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                <div class="text-center">
+                    <span class="bold" style="font-size: 14px;">MOTOPART</span><br>
+                    Solusi Sparepart Motor Anda<br>
+                    Semarang, Jawa Tengah
+                </div>
+                <div class="line"></div>
+                <div>
+                    ID: ${data.order_id}<br>
+                    Kasir: ${data.kasir}<br>
+                    Tgl: ${data.waktu}
+                </div>
+                <div class="line"></div>
+                ${listBarang}
+                <div class="line"></div>
+                <div class="flex-between bold">
+                    <span>TOTAL</span>
+                    <span>Rp ${new Intl.NumberFormat('id-ID').format(data.total)}</span>
+                </div>
+                <div class="flex-between">
+                    <span>TUNAI</span>
+                    <span>Rp ${new Intl.NumberFormat('id-ID').format(data.bayar)}</span>
+                </div>
+                <div class="flex-between">
+                    <span>KEMBALI</span>
+                    <span>Rp ${new Intl.NumberFormat('id-ID').format(data.kembali)}</span>
+                </div>
+                <div class="line"></div>
+                <div class="text-center" style="margin-top: 10px;">
+                    Terima Kasih!<br>
+                    Jangan lupa servis rutin.
+                </div>
+            </body>
+            </html>
+        `;
+
+        nota.document.write(isiNota);
+        nota.document.close();
     }
 });
 </script>
