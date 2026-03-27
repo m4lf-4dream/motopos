@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('transaksis', function (Blueprint $table) {
 $table->id();
-        $table->string('order_id')->unique(); 
+        $table->string('order_id')->unique();
+        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
         $table->foreignId('barang_id')->constrained('barangs')->onDelete('cascade');
         $table->integer('jumlah');
         $table->bigInteger('total_harga');
@@ -23,7 +24,7 @@ $table->id();
         });
     }
 
-    /**
+    /**A
      * Reverse the migrations.
      */
     public function down(): void

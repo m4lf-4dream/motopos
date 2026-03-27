@@ -10,6 +10,7 @@ class Transaksi extends Model
     use HasFactory;
     protected $fillable = [
         'order_id',
+        'user_id',
         'barang_id',
         'jumlah',
         'total_harga',
@@ -18,8 +19,7 @@ class Transaksi extends Model
     ];
 
     public function barang()
-{
-    return $this->belongsTo(Barang::class, 'barang_id');
-}
-
+    {
+        return $this->belongsTo(Barang::class, 'barang_id');
+    }
 }

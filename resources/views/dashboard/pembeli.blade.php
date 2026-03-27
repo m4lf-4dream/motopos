@@ -15,13 +15,6 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     @endif
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4"
-                            role="alert" style="border-radius: 12px;">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -65,51 +58,46 @@
                                     <h5 class="modal-title fw-bold">Detail Pesanan</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <form action="{{ route('cart.add') }}" method="POST">
-                                    @csrf
-                                    <div class="modal-body">
-                                        <input type="hidden" name="barang_id" value="{{ $item->id }}">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Jumlah Beli</label>
+                                        <input type="number" id="qty{{ $item->id }}"
+                                            class="form-control border-0 bg-light" value="1" min="1"
+                                            max="{{ $item->stok }}" required>
+                                        <small class="text-muted">Stok tersedia: {{ $item->stok }} pcs</small>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Jumlah Beli</label>
-                                            <input type="number" name="quantity" class="form-control border-0 bg-light"
-                                                value="1" min="1" max="{{ $item->stok }}" required>
-                                            <small class="text-muted">Stok tersedia: {{ $item->stok }} pcs</small>
-                                        </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Pengambilan</label>
+                                        <select id="metode{{ $item->id }}" class="form-select border-0 bg-light">
+                                            <option value="Ambil Sendiri">Kasir</option>
+                                        </select>
+                                    </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Metode Pengambilan</label>
-                                            <select name="metode" class="form-select border-0 bg-light" required>
-                                                <option value="Ambil Sendiri">Ambil Sendiri</option>
-                                                <option value="Delivery">Delivery (Antar)</option>
-                                            </select>
-                                        </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Metode Pembayaran</label>
+                                        <div class="d-flex gap-2">
+                                            <input type="radio" class="btn-check" name="payment{{ $item->id }}"
+                                                id="cash{{ $item->id }}" value="Cash" checked autocomplete="off">
+                                            <label class="btn btn-outline-danger w-50 fw-bold"
+                                                for="cash{{ $item->id }}" style="border-radius: 10px;">Cash</label>
 
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">Metode Pembayaran</label>
-                                            <div class="d-flex gap-2">
-                                                <input type="radio" class="btn-check" name="payment"
-                                                    id="cash{{ $item->id }}" value="Cash" checked
-                                                    autocomplete="off">
-                                                <label class="btn btn-outline-danger w-50 fw-bold"
-                                                    for="cash{{ $item->id }}"
-                                                    style="border-radius: 10px;">Cash</label>
-
-                                                <input type="radio" class="btn-check" name="payment"
-                                                    id="emoney{{ $item->id }}" value="E-Money" autocomplete="off">
-                                                <label class="btn btn-outline-danger w-50 fw-bold"
-                                                    for="emoney{{ $item->id }}"
-                                                    style="border-radius: 10px;">E-Money</label>
-                                            </div>
+                                            <input type="radio" class="btn-check" name="payment{{ $item->id }}"
+                                                id="emoney{{ $item->id }}" value="E-Money" autocomplete="off">
+                                            <label class="btn btn-outline-danger w-50 fw-bold"
+                                                for="emoney{{ $item->id }}"
+                                                style="border-radius: 10px;">E-Money</label>
                                         </div>
                                     </div>
-                                    <div class="modal-footer border-0">
-                                        <button type="submit" class="btn w-100 text-white fw-bold py-3 shadow"
-                                            style="background-color: #BF4646; border-radius: 15px;">
-                                            Konfirmasi & Masuk Keranjang
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
+                                <div class="modal-footer border-0">
+                                    <button type="button"
+                                        onclick="simpanKeLocalStorage({{ $item->id }}, '{{ $item->nama_barang }}', {{ $item->harga }})"
+                                        class="btn w-100 text-white fw-bold py-3 shadow"
+                                        style="background-color: #BF4646; border-radius: 15px;">
+                                        Konfirmasi & Masuk Keranjang
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -117,4 +105,36 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function simpanKeLocalStorage(id, nama, harga) {
+            // 1. Ambil jumlah dari input modal
+            const qty = parseInt(document.getElementById('qty' + id).value);
+            const metode = document.getElementById('metode' + id).value;
+
+            // 2. Ambil data keranjang lama
+            let cart = JSON.parse(localStorage.getItem('motopart_cart')) || [];
+
+            // 3. Cek apakah barang sudah ada
+            let found = cart.find(item => item.id === id);
+
+            if (found) {
+                found.quantity += qty;
+            } else {
+                cart.push({
+                    id: id,
+                    name: nama,
+                    price: harga,
+                    quantity: qty,
+                    metode: metode
+                });
+            }
+
+            // 4. Simpan kembali
+            localStorage.setItem('motopart_cart', JSON.stringify(cart));
+
+            // 5. Redirect ke halaman keranjang pembeli.cart
+            window.location.href = "{{ route('pembeli.cart') }}";
+        }
+    </script>
 </x-app-layout>
