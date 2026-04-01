@@ -87,7 +87,6 @@
                                         <div class="col-md-5 ps-4">
                                             <span class="text-muted small">Detail Barang</span>
                                             <ul class="list-unstyled mt-1 mb-0">
-                                                {{-- Kita langsung ambil dari relasi barang, tidak perlu json_decode --}}
                                                 <li class="d-flex justify-content-between border-bottom py-1">
                                                     <span>
                                                         <strong>{{ $order->barang->nama_barang ?? 'Produk Terhapus' }}</strong>

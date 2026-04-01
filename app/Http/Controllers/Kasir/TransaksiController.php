@@ -64,6 +64,7 @@ public function store(Request $request)
 
             Transaksi::create([
                 'order_id' => $order_id_baru,
+                'user_id' => Auth::id(),
                 'barang_id' => $item['id'],
                 'jumlah' => $item['quantity'],
                 'total_harga' => $subtotal,
@@ -74,7 +75,7 @@ public function store(Request $request)
             $barang->decrement('stok', $item['quantity']);
         }
 
-       
+
         if ($request->has('order_id') && !empty($request->order_id)) {
             Transaksi::where('order_id', $request->order_id)
                      ->where('status', 'Pending')

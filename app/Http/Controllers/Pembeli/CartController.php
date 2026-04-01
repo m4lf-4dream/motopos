@@ -60,7 +60,6 @@ class CartController extends Controller
                 Transaksi::create([
                     'order_id'          => $newOrderId,
                     'user_id'           => $userId,
-                    // Di JS kamu pakai 'id', maka di sini kita petakan ke 'barang_id'
                     'barang_id'         => $item['id'],
                     'jumlah'            => $item['quantity'],
                     'total_harga'       => $item['price'] * $item['quantity'],
@@ -94,6 +93,68 @@ class CartController extends Controller
             ->get();
 
         return view('pembeli.pesanan', compact('orders'));
+    }
+
+    public function checkoutMidtrans(Request $request)
+    {
+        // Decode data dari JSON.stringify(cart)
+        $itemsData = json_decode($request->items, true);
+        $userId = Auth::id();
+
+        if (!$itemsData || count($itemsData) == 0) {
+            return response()->json(['status' => 'error', 'message' => 'Keranjang kosong.'], 400);
+        }
+
+        $newOrderId = 'MTP-EM-' . strtoupper(uniqid());
+        $totalGross = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($itemsData as $item) {
+                $subtotal = $item['price'] * $item['quantity'];
+                $totalGross += $subtotal;
+
+                Transaksi::create([
+                    'order_id'          => $newOrderId,
+                    'user_id'           => $userId,
+                    'barang_id'         => $item['id'],
+                    'jumlah'            => $item['quantity'],
+                    'total_harga'       => $subtotal,
+                    'metode_pembayaran' => 'E-Money',
+                    'status'            => 'Pending',
+                ]);
+            }
+
+            // Konfigurasi Parameter Midtrans
+            $params = [
+                'transaction_details' => [
+                    'order_id'     => $newOrderId,
+                    'gross_amount' => (int) $totalGross,
+                ],
+                'customer_details' => [
+                    'first_name' => Auth::user()->name,
+                    'email'      => Auth::user()->email,
+                ],
+            ];
+
+            // Generate Snap Token
+            $snapToken = Snap::getSnapToken($params);
+
+            DB::commit();
+
+            return response()->json([
+                'status'     => 'success',
+                'snap_token' => $snapToken,
+                'order_id'   => $newOrderId
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Midtrans Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 

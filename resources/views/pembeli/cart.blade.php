@@ -1,4 +1,8 @@
 <x-app-layout>
+    <script type="text/javascript"
+    src="https://app.sandbox.midtrans.com/snap/snap.js"
+    data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}">
+</script>
     <style>
         /* SCROLLBAR KUSTOM UNTUK TABEL */
         .cart-scroll-container {
@@ -54,9 +58,15 @@
                         <hr>
 
                         <div id="checkout-action-area">
-                            <button id="btn-konfirmasi-cash" class="btn btn-light w-100 fw-bold py-3 shadow-sm" style="color: #BF4646; border-radius: 12px;">
-                                <i class="bi bi-send-check-fill me-2"></i> KONFIRMASI PESANAN (CASH)
-                            </button>
+                            <div id="checkout-action-area">
+    <button id="btn-konfirmasi-cash" class="btn btn-light w-100 fw-bold py-3 shadow-sm mb-2" style="color: #BF4646; border-radius: 12px;">
+        <i class="bi bi-cash-stack me-2"></i> KONFIRMASI PESANAN (CASH)
+    </button>
+
+    <button id="btn-konfirmasi-emoney" class="btn btn-dark w-100 fw-bold py-3 shadow-sm" style="border-radius: 12px; background-color: #1a1a1a;">
+        <i class="bi bi-wallet2 me-2"></i> BAYAR DENGAN E-MONEY (QRIS/VA)
+    </button>
+</div>
                         </div>
                         <small class="d-block mt-3 text-center opacity-75">*Status pesanan akan menjadi 'Pending' sampai dibayar di Kasir.</small>
                     </div>
@@ -66,8 +76,63 @@
     </div>
 
     <script>
-        // 1. Ambil data dari localStorage (Permanen)
+
         let cart = JSON.parse(localStorage.getItem('motopart_cart')) || [];
+
+        document.getElementById('btn-konfirmasi-emoney').addEventListener('click', function() {
+        if (cart.length === 0) return alert('Keranjang masih kosong!');
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menghubungkan...';
+
+        fetch("{{ route('cart.checkout.midtrans') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({
+                items: JSON.stringify(cart)
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                window.snap.pay(data.snap_token, {
+                    onSuccess: function(result) {
+                        alert("Pembayaran Berhasil!");
+                        localStorage.removeItem('motopart_cart');
+                        window.location.href = "{{ route('pembeli.pesanan') }}";
+                    },
+                    onPending: function(result) {
+                        alert("Menunggu pembayaran Anda.");
+                        localStorage.removeItem('motopart_cart');
+                        window.location.href = "{{ route('pembeli.pesanan') }}";
+                    },
+                    onError: function(result) {
+                        alert("Pembayaran gagal!");
+                        btn.disabled = false;
+                        btn.innerText = 'BAYAR DENGAN E-MONEY (QRIS/VA)';
+                    },
+                    onClose: function() {
+                        alert('Anda menutup jendela pembayaran.');
+                        btn.disabled = false;
+                        btn.innerText = 'BAYAR DENGAN E-MONEY (QRIS/VA)';
+                    }
+                });
+            } else {
+                alert('Gagal: ' + data.message);
+                btn.disabled = false;
+                btn.innerText = 'BAYAR DENGAN E-MONEY (QRIS/VA)';
+            }
+        })
+        .catch(err => {
+            alert('Terjadi kesalahan koneksi.');
+            btn.disabled = false;
+            btn.innerText = 'BAYAR DENGAN E-MONEY (QRIS/VA)';
+        });
+    });
 
         function renderCart() {
             const body = document.getElementById('cart-items-body');
